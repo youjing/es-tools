@@ -168,7 +168,11 @@ else
         eval "$CMD" | while read -r index status health docs_count size creation_date; do
             # 大小过滤
             if [ -n "$MAX_SIZE_LIMIT" ]; then
-                # size 现在是字节
+                # size 现在是字节，需要确保是数字
+                if [[ ! "$size" =~ ^[0-9]+$ ]]; then
+                    continue
+                fi
+                
                 if [ "$size" -ge "$MAX_BYTES" ]; then
                     continue
                 fi
@@ -187,7 +191,7 @@ else
         if [ -n "$MAX_SIZE_LIMIT" ]; then
             # 需要过滤大小，但只显示名字
             eval "$CMD" | while read -r index status health docs_count size creation_date; do
-                if [ "$size" -lt "$MAX_BYTES" ]; then
+                if [[ "$size" =~ ^[0-9]+$ ]] && [ "$size" -lt "$MAX_BYTES" ]; then
                     echo "$index"
                 fi
             done
