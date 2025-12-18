@@ -74,12 +74,21 @@ check_cluster_health() {
     while true; do
         response=$(curl -X GET $AUTH -s "$health_url")
         status=$(echo "$response" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+        relocating=$(echo "$response" | grep -o '"relocating_shards":[0-9]*' | cut -d':' -f2)
+        initializing=$(echo "$response" | grep -o '"initializing_shards":[0-9]*' | cut -d':' -f2)
+        pending=$(echo "$response" | grep -o '"number_of_pending_tasks":[0-9]*' | cut -d':' -f2)
         
-        if [ "$status" = "green" ]; then
-            echo "集群状态正常 (green)。"
+        # 严格的健康检查条件
+        # 1. 状态必须为 green (或者 yellow, 如果允许的话，但通常 green 最安全)
+        # 2. 没有正在搬迁的分片 (relocating_shards == 0)
+        # 3. 没有正在初始化的分片 (initializing_shards == 0)
+        # 4. 挂起任务数较低 (例如 < 50，防止主节点过载)
+        
+        if [ "$status" = "green" ] && [ "$relocating" -eq 0 ] && [ "$initializing" -eq 0 ] && [ "$pending" -lt 50 ]; then
+            echo "集群健康状态良好: Status=$status, Relocating=$relocating, Initializing=$initializing, PendingTasks=$pending"
             return 0
         else
-            echo "当前集群状态: $status。等待恢复 Green 状态..."
+            echo "集群状态未就绪 (Status=$status, Relocating=$relocating, Initializing=$initializing, Pending=$pending)。等待恢复..."
             sleep 5
         fi
     done
@@ -221,6 +230,10 @@ for index in "${INDICES_TO_DELETE[@]}"; do
         fi
     fi
 
+    # 步骤 2.1: 执行前先检查集群状态
+    # 确保当前集群能够承载删除操作带来的元数据更新压力
+    check_cluster_health
+
     # 执行删除
     if [ "$DRY_RUN" = true ]; then
         echo "[Dry Run] curl -X DELETE $AUTH \"http://${ES_HOST}:${ES_PORT}/$index\""
@@ -234,25 +247,14 @@ for index in "${INDICES_TO_DELETE[@]}"; do
              echo "索引 $index 不存在 (404)。"
         else
             echo "删除 $index 失败，HTTP 状态码: $http_code"
-            # 失败是否继续？通常应该停止或询问。这里选择继续但提示
             echo "警告: 删除操作可能未成功。"
         fi
-    fi
-
-    # 步骤 3: 等待并检查状态
-    # 如果是最后一个索引，且删除成功，也许不需要等待检查？
-    # 但需求说“删除后需等待...检查集群状态为 green 才继续删除下一个索引”
-    # 如果是最后一个，可能也是好的实践 checks status once more, or just finsh.
-    # Loop continuation implies waiting before *next*.
-    if [ "$count" -lt "$total" ]; then
-        echo "等待 $WAIT_TIME 秒..."
-        if [ "$DRY_RUN" = false ]; then
-            sleep "$WAIT_TIME"
-        fi
         
-        check_cluster_health
-    else
-        echo "所有操作完成。"
+        # 删除后等待，让集群有喘息之机，处理刚刚产生的变更
+        if [ "$count" -lt "$total" ]; then
+             echo "操作冷却，等待 $WAIT_TIME 秒..."
+             sleep "$WAIT_TIME"
+        fi
     fi
     
     echo "----------------------------------------"
