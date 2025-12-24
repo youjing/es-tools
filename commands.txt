@@ -1,0 +1,10 @@
+read -p "Please input password:" -s PASS && echo
+
+
+ES_HOST=10.101.12.30 ES_PORT=30920 ES_USER=elastic ES_PASS=$PASS ./list-indices.sh --pattern 2025.11 --max-size 3mb | ES_HOST=10.101.12.30 ES_PORT=30920 ES_USER=elastic ES_PASS=$PASS ./delete-indices.sh --no-confirm --waiting 20
+
+ES_HOST=10.101.12.30 ES_PORT=30920 ES_USER=elastic ES_PASS=$PASS ./import-dangling-indices.sh --waiting 20 --import-and-delete
+
+
+
+ES_HOST=172.20.11.100 ES_PORT=30920 ES_USER=elastic ES_PASS=$PASS ./list-indices.sh --pattern 2025.0 --max-size 30gb | ES_HOST=172.20.11.100 ES_PORT=30920 ES_USER=elastic ES_PASS=$PASS ./delete-indices.sh --no-confirm

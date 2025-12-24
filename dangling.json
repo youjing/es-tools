@@ -1,0 +1,18 @@
+{
+    "_nodes": {
+        "total": 6,
+        "successful": 6,
+        "failed": 0
+    },
+    "cluster_name": "elasticsearch",
+    "dangling_indices": [
+        {
+            "index_name": "idx1",
+            "index_uuid": "uuid1"
+        },
+        {
+            "index_name": "idx2",
+            "index_uuid": "uuid2"
+        }
+  ]
+}

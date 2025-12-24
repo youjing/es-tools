@@ -340,8 +340,8 @@ for item in "${INDICES_TO_IMPORT[@]}"; do
         echo "正在导入 $index_name ..."
         http_code=$(curl -X POST $AUTH -s -o /dev/null -w "%{http_code}" "http://${ES_HOST}:${ES_PORT}/_dangling/${index_uuid}?accept_data_loss=true")
         
-        if [ "$http_code" == "200" ]; then
-            echo "索引 $index_name 导入成功。"
+        if [ "$http_code" == "200" ] || [ "$http_code" == "202" ]; then
+            echo "索引 $index_name 导入成功 (HTTP $http_code)。"
             
             # 导入并删除逻辑
             if [ "$IMPORT_AND_DELETE" = true ]; then
