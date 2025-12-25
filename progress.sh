@@ -44,9 +44,11 @@ draw_progress_bar() {
         filled_bar="${filled_bar%?}>"
     fi
 
+    local suffix="$4"
+
     # Print using \r (carriage return) to return to start of line
     # No newline at the end
-    printf "\r[%s%s] %3d%%" "$filled_bar" "$empty_bar" "$percent"
+    printf "\r[%s%s] %3d%% %s" "$filled_bar" "$empty_bar" "$percent" "$suffix"
 }
 
 # Demo execution if run directly
